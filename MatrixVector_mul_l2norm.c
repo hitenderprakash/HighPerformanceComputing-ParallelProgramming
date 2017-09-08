@@ -7,14 +7,18 @@
 
 #include<stdio.h>
 #include<stdlib.h>
-#include<math.h>
 #include<string.h>
+#include<math.h>
+//To link math.h routines, the program must be compiled with -lm flag
 
 #define pi 3.14159265
+
+//function prototypes
 void displayMatrix(double **matrix, int rows, int cols);
 double l2NormOfColoumnVector(double **vec, int sz);
 double ** matrixMaultiplication(double **leftMatrix, int leftMatrix_rows, int leftMatrix_cols, double **rightMatrix, int rightMatrix_cols);
 
+//main starts
 int main()
 {	
 
