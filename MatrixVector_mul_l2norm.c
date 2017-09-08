@@ -21,13 +21,47 @@ double ** matrixMaultiplication(double **leftMatrix, int leftMatrix_rows, int le
 //main starts
 int main()
 {	
+	//The number of rows and coloumns in matrix
+	int mrow, mcol;
 
-	//The number of rows and coloumn in the matrix are 183
-	int mrow=183;
-	int mcol=183;
+	/*
+	 * This section reads the number of rows and coloumns from the MTX file 
+	 * Assumption: The MTX file is present in the current working directory with the executable
+	 */ 
+	static const char filename[] = "fs_183_1.mtx";
+	FILE *f = fopen ( filename, "r" );
+	if ( f != NULL )
+	{
+       char line [200];
+       int line_num=0;
+       while ( fgets ( line, sizeof line, f ) != NULL && line_num <2) 
+       {
+		  line_num++;	  
+		  if(line_num<2){ continue;} 
+          char *tok;
+          tok=strtok(line," ");
+          int tok_num=0;
+         
+          while(tok!=NULL && tok_num<2){
+			 tok_num++;		 
+			 if(tok_num==1){ mrow=atoi(tok);} //read rows		 
+			 else if(tok_num==2){mcol=atoi(tok);} //read coloumns	 
+			 tok=strtok (NULL, " ");
+		  }
+       }
+       fclose ( f );
+       //printf("\nNumber of Rows: %d, Number of Coloumns: %d",mrow,mcol);
+    }
+    else
+    {
+       printf("\nNOT ABLE TO READ FILE: %s. \nPLEASE CHECK IF FILE EXISTS",filename);
+       printf("\nPLEASE KEEP BOTH, EXECUTABLE AND DEPENDENT MTX FILES IN CURRENT WORKING DIRECTORY");
+       printf("\nEXITING NOW...\n");
+       exit(0);     
+    }	
 	
 	/*craeting matrix
-	 * This section create the 183x183 matrix 
+	 * This section create the mrow x mcol matrix 
 	 * initiaize each element with 0.0
 	 */
 	double **mat=0;//initialize pointer with null 
@@ -55,7 +89,6 @@ int main()
 	 * Also note that the array indexing starts with [1] in mtx file
 	 * while the C Language start array indexing with [0]
 	 */
-	static const char filename[] = "fs_183_1.mtx";
 	FILE *file = fopen ( filename, "r" );
 	if ( file != NULL )
 	{
@@ -90,9 +123,9 @@ int main()
     }
     else
     {
-       printf("\nNOT ABLE TO READ FILE. PLEASE CHECK IF FILE EXISTS");
+       printf("\nNOT ABLE TO READ FILE: %s. \nPLEASE CHECK IF FILE EXISTS",filename);
        printf("\nPLEASE KEEP BOTH, EXECUTABLE AND DEPENDENT MTX FILES IN CURRENT WORKING DIRECTORY");
-       printf("\nEXITING NOW...");
+       printf("\nEXITING NOW...\n");
        exit(0);
       
     }
