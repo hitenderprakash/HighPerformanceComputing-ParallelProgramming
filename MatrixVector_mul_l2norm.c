@@ -1,13 +1,19 @@
 /*  Introduction to High Performance Computing 
- *  Assignment 1 
+ *  Assignment 1
+ * 
  *  Program for Matrix - vector Multiplication and calculating L2 Norm of resultant Vector
+ *  Also calculate the floating point operations per second
+ * 
  *  Author: Hitender Prakash
  *  Email: hprakash@iu.edu
+ * 
+ *  version: 5th update (tracked at https://github.iu.edu/hprakash/HPC )
  */
 
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include<time.h>
 #include<math.h>
 //To link math.h routines, the program must be compiled with -lm flag
 
@@ -16,7 +22,7 @@
 //function prototypes
 void displayMatrix(double **matrix, int rows, int cols);
 double l2NormOfColoumnVector(double **vec, int sz);
-double ** matrixMaultiplication(double **leftMatrix, int leftMatrix_rows, int leftMatrix_cols, double **rightMatrix, int rightMatrix_cols);
+double ** matrixMaultiplication(double **leftMatrix, int leftMatrix_rows, int leftMatrix_cols, double **rightMatrix, int rightMatrix_cols,long *flop);
 
 //main starts
 int main()
@@ -167,8 +173,18 @@ int main()
 	double **resMat=0;
 	int resRow=mrow;
 	int resCol=vcol;
-	resMat=matrixMaultiplication(mat, mrow, mcol, vec, vcol);
+	
+	long flop=0;//to calculate total number of floating point operations in matrix-vector multiplication
+	
+	//time the matrix multiplication
 
+	clock_t start,finish;
+	int time_taken;
+	start=clock();
+	resMat=matrixMaultiplication(mat, mrow, mcol, vec, vcol, &flop);
+	finish=clock();
+	time_taken=finish - start;
+	
 	//display result matrix (uncomment if you want to see the resultant vector created)
 	//displayMatrix(resMat, resRow, resCol);
 	
@@ -176,7 +192,15 @@ int main()
 	double l2norm=l2NormOfColoumnVector(resMat,resRow);
 	
 	//prints l2norm in scientific( exponential format)
-	printf("\nL2 Norm of result vector: %e\n",l2norm);	
+	printf("\nL2 Norm of result vector: %e (%lf)",l2norm,l2norm);	
+	
+	//print total floating point operations and cloock ticks in matrix-vector multipliation and other timing info
+	printf("\nNumber of Floating Point Operations Matrix-Vector multiplation: %ld",flop);
+	printf("\nNumber of Clock Ticks for Matrix-Vector multiplation: %d",time_taken);
+	printf("\nNumber of clock tics in 1 second(Read from hardware): %ld",CLOCKS_PER_SEC);
+	double flops=(double)flop/(double)time_taken * (double)CLOCKS_PER_SEC;
+	printf("\nFloating point operations per second: %e (%lf)\n\n",flops,flops);
+	printf("\n** overhead of calling function and other small operation not accounted for\n\n");
 	return 0;
 }
 
@@ -214,13 +238,14 @@ void displayMatrix(double **matrix, int rows, int cols){
 }
 
 /* Method for multiplying to Matrices
- * Arguments: left matrix reference, rows in left matrix, coloumns in left matrix, right matrix reference, coloumns in right matrix
+ * Arguments: left matrix reference, rows in left matrix, coloumns in left matrix, right matrix reference, coloumns in right matrix, reference to number of floating poinnt operations count
  * Assumption: Both the matrices qualify for multiplication i.e coloumns in left matrix are equal to rows in right matrix
  * This method does not validate the above condition and need that valid matrices are provided
  * Input arguments must be sanitized before passing to this method
  * Output: reference to resultant matrix
+ * It stores the total number of floating point operations in "flop" variable
  */
-double ** matrixMaultiplication(double **leftMatrix, int leftMatrix_rows, int leftMatrix_cols, double **rightMatrix, int rightMatrix_cols){
+double ** matrixMaultiplication(double **leftMatrix, int leftMatrix_rows, int leftMatrix_cols, double **rightMatrix, int rightMatrix_cols,long *flop){
 	double **resMat=0;
 	int resRow=leftMatrix_rows;
 	int resCol=rightMatrix_cols;
@@ -237,6 +262,7 @@ double ** matrixMaultiplication(double **leftMatrix, int leftMatrix_rows, int le
 			resMat[i][j]=0.0; //initialize element of result matrix so it does not have garbage value
 			for(k=0;k<leftMatrix_cols;k++){
 				resMat[i][j]=resMat[i][j]+leftMatrix[i][k]*rightMatrix[k][j];
+				*flop+=2;//two floating point operations in each iteration
 			}
 		}
 	}
