@@ -7,7 +7,7 @@
  *  Author: Hitender Prakash
  *  Email: hprakash@iu.edu
  * 
- *  version: 5th update (tracked at https://github.iu.edu/hprakash/HPC )
+ *  version: 6th revision (tracked at https://github.iu.edu/hprakash/HPC )
  */
 
 #include<stdio.h>
@@ -211,12 +211,12 @@ int main()
  * Output: L2 Norm of vector
  */
 double l2NormOfColoumnVector(double **vec, int sz){
-	double sqSum=0.0; //double will cause overflow, taking long double
+	long double sqSum=0.0; //double will cause overflow, taking long double
 	int i=0;
 	for(i=0;i<sz;i++){
 		sqSum=sqSum+vec[i][0]*vec[i][0];
 	}
-	return sqrt(sqSum);
+	return (double)sqrt(sqSum);
 }
 
 /* Method for displaying the matrix in tabular form
