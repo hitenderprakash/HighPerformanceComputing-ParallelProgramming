@@ -7,7 +7,7 @@
  *  Author: Hitender Prakash
  *  Email: hprakash@iu.edu
  * 
- *  version: 6th revision (tracked at https://github.iu.edu/hprakash/HPC )
+ *  version: 7th revision (tracked at https://github.iu.edu/hprakash/HPC )
  */
 
 #include<stdio.h>
@@ -179,7 +179,7 @@ int main()
 	//time the matrix multiplication
 
 	clock_t start,finish;
-	int time_taken;
+	int time_taken;//calculate clock ticks 
 	start=clock();
 	resMat=matrixMaultiplication(mat, mrow, mcol, vec, vcol, &flop);
 	finish=clock();
@@ -198,7 +198,7 @@ int main()
 	printf("\nNumber of Floating Point Operations Matrix-Vector multiplation: %ld",flop);
 	printf("\nNumber of Clock Ticks for Matrix-Vector multiplation: %d",time_taken);
 	printf("\nNumber of clock tics in 1 second(Read from hardware): %ld",CLOCKS_PER_SEC);
-	double flops=(double)flop/(double)time_taken * (double)CLOCKS_PER_SEC;
+	double flops=((double)flop * (double)CLOCKS_PER_SEC)/(double)time_taken ;
 	printf("\nFloating point operations per second: %e (%lf)\n\n",flops,flops);
 	printf("\n** overhead of calling function and other small operation not accounted for\n\n");
 	return 0;
