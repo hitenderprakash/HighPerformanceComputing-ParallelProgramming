@@ -179,7 +179,7 @@ int main()
 	//time the matrix multiplication
 
 	clock_t start,finish;
-	int time_taken;//calculate clock ticks 
+	clock_t time_taken;//calculate clock ticks 
 	start=clock();
 	resMat=matrixMaultiplication(mat, mrow, mcol, vec, vcol, &flop);
 	finish=clock();
@@ -201,6 +201,24 @@ int main()
 	double flops=((double)flop * (double)CLOCKS_PER_SEC)/(double)time_taken ;
 	printf("\nFloating point operations per second: %e (%lf)\n\n",flops,flops);
 	printf("\n** overhead of calling function and other small operation not accounted for\n\n");
+	
+	//free memory from all matrices
+	
+	//free matrix
+	for(i=0;i<mrow;i++){
+		free (mat[i]);
+	}
+	free (mat);
+	//free vector
+	for(i=0;i<vrow;i++){
+		free (vec[i]);
+	}
+	free (vec);
+	//free result vector
+	for(i=0;i<resRow;i++){
+		free (resMat[i]);
+	}
+	free (resMat);
 	return 0;
 }
 
