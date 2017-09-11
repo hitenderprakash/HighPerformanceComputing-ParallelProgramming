@@ -7,14 +7,14 @@
  *  Author: Hitender Prakash
  *  Email: hprakash@iu.edu
  * 
- *  version: 7th revision (tracked at https://github.iu.edu/hprakash/HPC )
+ *  version: 10th revision (tracked at https://github.iu.edu/hprakash/HPC )
  */
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include<time.h>
-#include<math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <math.h>
 //To link math.h routines, the program must be compiled with -lm flag
 
 #define pi 3.14159265
@@ -24,6 +24,55 @@ void displayMatrix(double **matrix, int rows, int cols);
 double l2NormOfColoumnVector(double **vec, int sz);
 double ** matrixMaultiplication(double **leftMatrix, int leftMatrix_rows, int leftMatrix_cols, double **rightMatrix, int rightMatrix_cols,long *flop);
 
+//Code for using RDTSC for getting CPU clock rate
+/* rdtsc() function
+ * input: NULL
+ * output: returns the processor time stamp counter
+ * used to measure the active cycles of processor for a job
+ * The following code has been taken from:
+ * http://www.unix.com/programming/81639-rdtsc-use-c.html
+ */
+#if defined(__i386__)
+// For x86 machine
+static __inline__ unsigned long long rdtsc(void)
+{
+  unsigned long long int x;
+     __asm__ volatile (".byte 0x0f, 0x31" : "=A" (x));
+     return x;
+}
+//for x64 machine
+#elif defined(__x86_64__)
+static __inline__ unsigned long long rdtsc(void)
+{
+  unsigned hi, lo;
+  __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
+  return ( (unsigned long long)lo)|( ((unsigned long long)hi)<<32 );
+}
+#elif defined(__powerpc__)
+static __inline__ unsigned long long rdtsc(void)
+{
+  unsigned long long int result=0;
+  unsigned long int upper, lower,tmp;
+  __asm__ volatile(
+                "0:                  \n"
+                "\tmftbu   %0           \n"
+                "\tmftb    %1           \n"
+                "\tmftbu   %2           \n"
+                "\tcmpw    %2,%0        \n"
+                "\tbne     0b         \n"
+                : "=r"(upper),"=r"(lower),"=r"(tmp)
+                );
+  result = upper;
+  result = result<<32;
+  result = result|lower;
+  return(result);
+}
+#endif 
+//http://www.unix.com/programming/81639-rdtsc-use-c.html
+
+
+//function prototype
+double cpuClockRate();
 //main starts
 int main()
 {	
@@ -100,7 +149,7 @@ int main()
 	{
        char line [200];
        int line_num=0;
-       while ( fgets ( line, sizeof line, file ) != NULL ) 
+       while ( fgets ( line, sizeof line, file ) != NULL ) //fgets is safer 
        {
 		  line_num++;
 		  
@@ -178,13 +227,18 @@ int main()
 	
 	//time the matrix multiplication
 
-	clock_t start,finish;
-	clock_t time_taken;//calculate clock ticks 
-	start=clock();
+	//clock_t start,finish;
+	double start,finish;
+	double timeStamps_taken;//calculate clock ticks 
+	//start=(double)clock(); //clock() returns clock_t (i.e long int)
+	start=(double)rdtsc(); 
 	resMat=matrixMaultiplication(mat, mrow, mcol, vec, vcol, &flop);
-	finish=clock();
-	time_taken=finish - start;
-	
+	//finish=(double)clock();
+	finish=(double)rdtsc(); 
+	timeStamps_taken=finish - start;	
+	double clock_rate=cpuClockRate();
+	//printf("\nCPU clock rate (time stamp counter increments in one second): %lf",clock_rate);
+	double timeConsumed=(timeStamps_taken/clock_rate);
 	//display result matrix (uncomment if you want to see the resultant vector created)
 	//displayMatrix(resMat, resRow, resCol);
 	
@@ -196,11 +250,14 @@ int main()
 	
 	//print total floating point operations and cloock ticks in matrix-vector multipliation and other timing info
 	printf("\nNumber of Floating Point Operations Matrix-Vector multiplation: %ld",flop);
-	printf("\nNumber of Clock Ticks for Matrix-Vector multiplation: %d",time_taken);
-	printf("\nNumber of clock tics in 1 second(Read from hardware): %ld",CLOCKS_PER_SEC);
-	double flops=((double)flop * (double)CLOCKS_PER_SEC)/(double)time_taken ;
+	printf("\nTime consumed for Matrix-Vector multiplication: %lf seconds",timeConsumed);
+	printf("\nCPU clock rate (time stamp counter increments in one second): %lf",clock_rate);
+	double flops=flop/timeConsumed;
+	//printf("\nNumber of Clock Ticks for Matrix-Vector multiplation: %d",time_taken);
+	//printf("\nNumber of clock tics in 1 second(Read from hardware): %ld",CLOCKS_PER_SEC);
+	//double flops=((double)flop * (double)CLOCKS_PER_SEC)/(double)time_taken ;
 	printf("\nFloating point operations per second: %e (%lf)\n\n",flops,flops);
-	printf("\n** overhead of calling function and other small operation not accounted for\n\n");
+	printf("\n** overhead of calling function and other small operations is not accounted\n\n");
 	
 	//free memory from all matrices
 	
@@ -285,4 +342,19 @@ double ** matrixMaultiplication(double **leftMatrix, int leftMatrix_rows, int le
 		}
 	}
 	return resMat;
+}
+
+/* Method to calculate the processor time stamp increments in 1 second
+ * input: NULL
+ * output: numbers of processor clock ticks in one second as returned by rdtsc()
+ */
+double cpuClockRate(){
+	double init=time(NULL);
+	while (init==time(NULL)){}
+	double start=rdtsc();
+	init=time(NULL);
+	while (init==time(NULL)){}
+	double end=rdtsc();
+	double clockRate=end-start;
+	return clockRate;
 }
