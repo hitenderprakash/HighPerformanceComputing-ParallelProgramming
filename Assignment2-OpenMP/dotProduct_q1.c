@@ -4,11 +4,9 @@
  * Question 1
  * 
  * The problem with code was that "dot_prod" variable is not thread safe
- * Solution 1: for dot_product, instead of a single shared variable take an array  so that each
- * thread write to separate array element without any synchronization problem
- * Later add all the array element and that will be the dot_product
+ * Solution 2: Use REDUCTION
  * 
- * version 1
+ * version 2
  */
 
 #include <stdio.h>
@@ -18,23 +16,19 @@ int main(){
 	const int N=100;
 	int i,k;
 	float a[N],b[N];	
-	float dot_prod[N];
+	float dot_prod;
+	dot_prod=0.0;
 	
 	for(k=0;k<N;k++){
 		a[k]=3.0*k;
 		b[k]=1.8*k;
 	}
-	
-	#pragma omp parallel 
-	{
-	#pragma omp for
+	//reduction with + operator i.e for each thread compiler makes a temporary copy of dot_prod initialized with identity value for + i.e 1
+	//And in the end it adds all the value 
+	#pragma omp parallel for reduction(+:dot_prod) 
 		for(i=0;i<N;i++){
-			dot_prod[i]=a[i]*b[i]; //each thread write its corresponding element without synchronization issue
+			dot_prod+=a[i]*b[i]; 
 		}
-	}
-	
-	float final_dot_prod=0.0; // to store the sum of all array elemnt 
-	for(i=0;i<N;i++){final_dot_prod+=dot_prod[i];}
-	printf("\nInner product of a[] and b[] = %f\n", final_dot_prod);
+	printf("\nInner product of a[] and b[] = %f\n", dot_prod);
 	return 0;
 }
