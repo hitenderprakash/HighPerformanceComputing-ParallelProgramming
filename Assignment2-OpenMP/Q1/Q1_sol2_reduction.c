@@ -2,11 +2,8 @@
  * Introduction to High Performance Computing 
  * Assignment 2
  * Question 1
- * 
  * The problem with code was that "dot_prod" variable is not thread safe
  * Solution 2: Use REDUCTION
- * 
- * version 2
  */
 
 #include <stdio.h>
@@ -32,3 +29,4 @@ int main(){
 	printf("\nInner product of a[] and b[] = %f\n", dot_prod);
 	return 0;
 }
+
