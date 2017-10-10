@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "omp.h"
 
 void displayMatrix(double **matrix, int rows, int cols);
 int main(int argc, char *argv[]){
@@ -42,6 +43,8 @@ int main(int argc, char *argv[]){
 	//displayMatrix(invmat,mrow,mcol);
 	
 	//Compute inverse
+	//Parallel implementation
+	#pragma omp parallel for shared(i) private(j)
 	for(i=0;i<mrow;i++){
 		double div=mat[i][i];
 		if(div==0){printf("\nError: singular matrix");}
