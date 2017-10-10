@@ -49,16 +49,16 @@ int main(int argc, char *argv[]){
 		double div=mat[i][i];
 		if(div==0){printf("\nError: singular matrix");}
 		#pragma omp parallel for
-		for(j=0;j<3;j++){
+		for(j=0;j<mcol;j++){
 			mat[i][j]=mat[i][j]/div;
 			invmat[i][j]=invmat[i][j]/div;
 		}
 		#pragma omp barrier
 		#pragma omp parallel for shared (i) private(j) private (k)
-		for(j=0;j<mcol;j++){
+		for(j=0;j<mrow;j++){
 			if(i!=j){
 				double mul=mat[j][i];
-				for(k=0;k<3;k++){
+				for(k=0;k<mcol;k++){
 					mat[j][k]=mat[j][k]-(mul*mat[i][k]);
 				    invmat[j][k]=invmat[j][k]-(mul*invmat[i][k]);						
 				}
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]){
 		}
 	}
 	//inverse calculation section ends
-	//displayMatrix(mat,mrow,mcol);
+	displayMatrix(mat,mrow,mcol);
 	displayMatrix(invmat,mrow,mcol);
 
 	printf("\nDone\n");
