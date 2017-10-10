@@ -64,6 +64,7 @@ int main(int argc, char *argv[]){
 				}
 			}
 		}
+		#pragma omp barrier
 	}
 	//inverse calculation section ends
 	displayMatrix(mat,mrow,mcol);
