@@ -22,7 +22,7 @@ int main(int argc, char *argv[]){
 	//initializing the matrix elements with zero 
 	for(i=0;i<mrow;i++){
 		for(j=0;j<mcol;j++){
-			mat[i][j]=719+rand()%1971;
+			mat[i][j]=7+rand()%11;
 		}
 	}
 	
@@ -44,33 +44,30 @@ int main(int argc, char *argv[]){
 	
 	//Compute inverse
 	//Parallel implementation
-	#pragma omp parallel for shared(i) private(j)
+
 	for(i=0;i<mrow;i++){
 		double div=mat[i][i];
 		if(div==0){printf("\nError: singular matrix");}
+		#pragma omp parallel for
 		for(j=0;j<3;j++){
 			mat[i][j]=mat[i][j]/div;
 			invmat[i][j]=invmat[i][j]/div;
 		}
+		#pragma omp barrier
+		#pragma omp parallel for shared (i) private(j) private (k)
 		for(j=0;j<mcol;j++){
 			if(i!=j){
 				double mul=mat[j][i];
 				for(k=0;k<3;k++){
-					
-					if(mat[j][k]==0 && mat[i][k]==0){}
-					else{mat[j][k]=mat[j][k]-(mul*mat[i][k]);}
-					
-					if(invmat[j][k]==0 && invmat[i][k]==0){}
-					else{invmat[j][k]=invmat[j][k]-(mul*invmat[i][k]);}
-							
+					mat[j][k]=mat[j][k]-(mul*mat[i][k]);
+				    invmat[j][k]=invmat[j][k]-(mul*invmat[i][k]);						
 				}
 			}
 		}
 	}
 	//inverse calculation section ends
-	
 	//displayMatrix(mat,mrow,mcol);
-	//displayMatrix(invmat,mrow,mcol);
+	displayMatrix(invmat,mrow,mcol);
 
 	printf("\nDone\n");
 	return 0;
