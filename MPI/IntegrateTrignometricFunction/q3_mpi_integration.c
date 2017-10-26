@@ -50,7 +50,7 @@ int main(int argc,char **argv) {
   double localSum=0.0;
   
   //debug info 
-  printf("\Rank: %d- I will do from: %lf to %lf", rank, startLoop, endLoop);
+  printf("\nRank: %d- I will do from: %lf to %lf", rank, startLoop, endLoop);
   
   while(theta <=endLoop){
 	  localSum+=cos(theta)*sin(theta/2);
