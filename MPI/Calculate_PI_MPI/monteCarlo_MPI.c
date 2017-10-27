@@ -2,7 +2,7 @@
  * Introduction to HPC 
  * Program: Calculate PI using MonteCarlo Simulation
  * Hitender Prakash (hprakash@iu.edu) 
- * version 1
+ * version 2 
  * Date Oct 25, 2017
  */
 #include <stdlib.h>
@@ -29,7 +29,7 @@ double monteCarloSimulation(long totalSamples){
 			count++;
 		}
 	}
-	pi_from_one_simulation=(double)count/(double)totalSamples;
+	pi_from_one_simulation=4.0*(double)count/(double)totalSamples;
 	return pi_from_one_simulation;
 }
 
