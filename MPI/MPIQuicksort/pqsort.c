@@ -86,7 +86,9 @@ void SequentialMerge(int *oldarr,int *newarr,int chunk, int numProc){
 		//write smallest element to new sorted global array
 		newarr[itr]=val;
 		itr++;
-	}	
+	}
+	//free memory 
+	free(procRanges);	
 }
 
 int main(int argc, char **argv)
@@ -156,10 +158,12 @@ int main(int argc, char **argv)
 		printf("\n=====================================================");
 		displayArray(newarr, 0, size-1); //ignore padded element
 		printf("\n\n");
+		
+		//free memory
+		free(origarr);
+		free(newarr);
 	}
-
 	MPI_Finalize();
-	//free(origarr);
-	//free(newarr);
+	
 	return 0;
 }
