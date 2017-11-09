@@ -51,14 +51,14 @@ void compute_new_values(double** old_matrix, double** new_matrix){
                             old_matrix[i][j-1] + old_matrix[i][j+1]);
     new_matrix[I_FIX][J_FIX] = TEMP;
 }
-/*
+
 void init_matrix(double** matrix, int rows, int cols){
     for (int i = 0; i < rows; i++)
         for (int j = 0; j < cols; j++) {
             matrix[i][j] = 0.0;
         }
     matrix[I_FIX][J_FIX] = TEMP;
-}*/
+}
 
 //do the computation of avarage value from surrounding values
 void computeJacobi(double **oldmat, double **newmat, int rows, int cols, double *ghostrow_recv_upper, double *ghostrow_recv_lower){
@@ -85,7 +85,7 @@ void computeJacobi2(double **oldmat, double **newmat, int rows, int cols, double
 	
 	int startRow=chunk*rank;	
 	int i,j;
-	for(i=0;i<rows;i++){
+	for(i=0;i<chunk;i++){
 		for(j=0;j<cols;j++){
 			int upper=0;
 			int lower=0;
@@ -157,6 +157,18 @@ void copy1dTo2d(int **dest, int *source,int size, int rank, int chunk){
 				//source++;
 			}
 		}
+}
+
+double findMaxDiff(double **oldMat, double **newMat, int cols, int rank, int chunk){
+	int startRow=rank*chunk;
+	double max_diff=DBL_MIN;
+	int i,j;
+	for(i=0;i<chunk;i++){
+		for(j=0;j<cols;j++){
+			max_diff= max(max_diff,newMat[i][j]-oldMat[i+startRow][j];
+		}
+	}
+	return max_diff;
 }
 
 int main(int argc, char *argv[]) {
@@ -264,11 +276,11 @@ int main(int argc, char *argv[]) {
 		computeJacobi2(a_old, subMatCP,rows,cols,ghostrow_recv_upper,ghostrow_recv_lower,rank,chunk);
 		
 		//compute the max diff here for every thread
-		
+		maxerr=findMaxDiff(a_old,subMatCP,cols,rank,chunk);
 		
 		//copy back the subMatCP to a_old corresponding elements 
 		
-		copyPartToMatrix(a_old,subMatCP,cols,rank,chunk)
+		copyPartToMatrix(a_old,subMatCP,cols,rank,chunk);
 		
 		//reconstruct a_old from all procs at proc 0
 		if(rank==0){
@@ -276,61 +288,26 @@ int main(int argc, char *argv[]) {
 			for(i=1;i<numProc;i++){
 				MPI_Recv(a_old[rank*chunk], cols*chunk, MPI_DOUBLE, i, 3, MPI_COMM_WORLD, &status);
 			}
+			a_old[I_FIX][J_FIX] = TEMP;
 		}
 		else{
 			//send to 0
 			MPI_Send(a_old[rank*chunk], cols*chunk, MPI_DOUBLE, 0, 3, MPI_COMM_WORLD);
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
-		
-		//display here if you want 
+		//display
+		print_matrix(a_old,rows,cols);
 		
 	}
-	//create the final matrix from chunks
-	
-	//sacttter matrix in new datatype
+	if(rank==0){
+		//final display
+		printf("\nFinal Matrix: \n");
+		print_matrix(a_old,rows,cols);
+	}
     
-    //mychanges
-    
-    
-    
-    
-    
-
-    while (1) {
-
-        if (DEBUG)
-            printf("Performing a new iteration...\n");
-
-        //compute new values and put them into a_new
-        compute_new_values(a_old, a_new);
-
-        if (DEBUG) {
-            printf("a_old is:\n"); //output matrix to screen
-            print_matrix(a_old);
-
-            printf("a_new is:\n");
-            print_matrix(a_new);
-        }
-
-        //calculate the maximum absolute differences among pairwise
-        // differences of old and new matrix elements
-        double max_diff = max_abs(a_old, a_new);
-
-        if (DEBUG)
-            printf("Max diff is: %f\n", max_diff);
-
-        if (max_diff < EPS)
-            break;
-
-        copy_matrix(a_old, a_new); //assign values of a_new to a_old
-
-        if (DEBUG)
-            printf("End of iteration\n\n");
-    }
-
-    printf("\nThe final heat distribution matrix is:\n");
-    print_matrix(a_new);
+   MPI_Finalize();
 
     return 0;
 }
+
+
