@@ -2,14 +2,18 @@
 #include <stdlib.h>
 #include <math.h>
 #include <float.h>
+#include "mpi.h"
 
-#define COLS 10
-#define ROWS 10
-#define TEMP 50.
+#define COLS 6
+#define ROWS 6
+#define TEMP 50.0
 #define DEBUG 1
 #define EPS 1e-6
 #define I_FIX 5
 #define J_FIX 5
+
+#define min(a,b) (((a)<(b))?(a):(b))
+#define max(a,b) (((a)>(b))?(a):(b))
 
 double max_abs(double** m1, double** m2, int rows, int cols){
     double max_val = DBL_MIN;
@@ -61,6 +65,7 @@ void init_matrix(double** matrix, int rows, int cols){
 }
 
 //do the computation of avarage value from surrounding values
+/*
 void computeJacobi(double **oldmat, double **newmat, int rows, int cols, double *ghostrow_recv_upper, double *ghostrow_recv_lower){
 	int i,j;
 	for(i=0;i<rows;i++){
@@ -72,17 +77,16 @@ void computeJacobi(double **oldmat, double **newmat, int rows, int cols, double 
 			if(j!=0){left=old[i][j-1];}
 			if(j!=cols-1){right=old[i][j+1];}
 			if(i!=0){upper=old[i-1][j];}
-			else if(i==0){upper=ghostrow_recv_upper[0][j];}
+			else if(i==0){upper=ghostrow_recv_upper[j];}
 			if(i!=rows-1){lower=old[i+1][j];}
-			else if(i==rows-1){upper=ghostrow_recv_lower[0][j];}			
+			else if(i==rows-1){upper=ghostrow_recv_lower[j];}			
 			newmat[i][j]= (0.25*(upper+lower+right+left));
 		}
 	}
 
-}
+}*/
 
-void computeJacobi2(double **oldmat, double **newmat, int rows, int cols, double *ghostrow_recv_upper, double *ghostrow_recv_lower,int rank,int chunk){
-	
+void computeJacobi(double **oldmat, double **newmat, int rows, int cols, double *ghostrow_recv_upper, double *ghostrow_recv_lower,int rank,int chunk){
 	int startRow=chunk*rank;	
 	int i,j;
 	for(i=0;i<chunk;i++){
@@ -91,12 +95,15 @@ void computeJacobi2(double **oldmat, double **newmat, int rows, int cols, double
 			int lower=0;
 			int right=0;
 			int left=0;
-			if(j!=0){left=old[i+startRow][j-1];}
-			if(j!=cols-1){right=old[i+startRow][j+1];}
-			if(i+startRow!=0){upper=old[i+startRow-1][j];}
-			else if(i+startRow==0){upper=ghostrow_recv_upper[0][j];}
-			if(i+startRow!=rows-1){lower=old[i+startRow+1][j];}
-			else if(i+startRow==rows-1){upper=ghostrow_recv_lower[0][j];}			
+			
+			if(j!=0){left=oldmat[i+startRow][j-1];}
+			if(j!=cols-1){right=oldmat[i+startRow][j+1];}
+			
+			if(i+startRow!=0){upper=oldmat[i+startRow-1][j];}			
+			//else if(i+startRow==0){upper=ghostrow_recv_upper[j];} //not required, it will anyway keep upper zero, beacuase for first row for proc 0 ghost cells from above are all zeros
+			
+			if(i+startRow!=rows-1){lower=oldmat[i+startRow+1][j];}
+			//else if(i+startRow==rows-1){upper=ghostrow_recv_lower[j];}// not required, because for last row of proc n-1 ghost cell from below are also zeros			
 			newmat[i][j]= (0.25*(upper+lower+right+left));
 		}
 	}
@@ -133,26 +140,26 @@ void copyPartToMatrix(double **dest, double **source, int size,int rank,int chun
 	}
 }
 
-void copy2dTo1d(int *dest, int **source,int size, int rank, int chunk){
+void copy2dTo1d(double *dest, double **source,int size, int rank, int chunk){
 		int startRow=rank*chunk;
 		int endRow=rank*chunk+chunk-1;
 		int i,j;
-		for(i=startRow;i<=endRow;i++){
+		for(i=0;i<chunk;i++){
 			for(j=0;j<size;j++){			
-				dest[i*size+j]=source[i][j];
+				dest[i*size+j]=source[i+startRow][j];
 				//*dest=source[i][j];
 				//dest++;
 			}
 		}
 }
 
-void copy1dTo2d(int **dest, int *source,int size, int rank, int chunk){
+void copy1dTo2d(double **dest, double *source,int size, int rank, int chunk){
 		int startRow=rank*chunk;
 		int endRow=rank*chunk+chunk-1;
 		int i,j;
-		for(i=startRow;i<=endRow;i++){
+		for(i=0;i<chunk;i++){
 			for(j=0;j<size;j++){
-				dest[i][j]=source[i*size+j];
+				dest[i+startRow][j]=source[i*size+j];
 				//dest[i][j]=*source;
 				//source++;
 			}
@@ -165,10 +172,18 @@ double findMaxDiff(double **oldMat, double **newMat, int cols, int rank, int chu
 	int i,j;
 	for(i=0;i<chunk;i++){
 		for(j=0;j<cols;j++){
-			max_diff= max(max_diff,newMat[i][j]-oldMat[i+startRow][j];
+			max_diff= max(max_diff,newMat[i][j]-oldMat[i+startRow][j]);
 		}
 	}
 	return max_diff;
+}
+
+void print_array(double *arr, int size){
+	printf("\n");
+	int i=0;
+	for(i=0;i<size;i++){
+		printf("%lf ",arr[i]);
+	}
 }
 
 int main(int argc, char *argv[]) {
@@ -181,9 +196,8 @@ int main(int argc, char *argv[]) {
 	double **subMat;
 	double **subMatCP;
 	
-	double maxerr=DBL_MAX;
-	double global_err;
-	double recverr;
+	double maxerr=DBL_MIN;
+	double global_err=DBL_MAX;
 	
 	double *ghostrow_send_upper=(double*) calloc(cols,sizeof(double));
 	double *ghostrow_send_lower=(double*) calloc(cols,sizeof(double));
@@ -194,6 +208,8 @@ int main(int argc, char *argv[]) {
 	int rank,numProc, root = 0;
 	MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 	MPI_Comm_size(MPI_COMM_WORLD,&numProc);
+	
+	//printf("\nRank: %d, Number of Processes: %d.",rank,numProc);
     
     int chunk=0; //rows to be taken up by single process
 	if(rows%numProc==0){
@@ -202,8 +218,10 @@ int main(int argc, char *argv[]) {
 	else{
 		chunk=(rows/numProc)+1;
 	}
+	//printf("\nEach proc gets: %d rows",chunk);
 	int startRow=rank*chunk;
 	int endRow=min(rank*chunk+chunk-1,cols-1);
+	//printf("\nRank %d gets from %d to %d", rank, startRow, endRow);
 		
 	//now need to alloc and init the matrix with perfect size (padding may be required)
 	a_old=alloc_matrix(chunk*numProc, cols);
@@ -213,101 +231,126 @@ int main(int argc, char *argv[]) {
 	//initialize sub matrix with less number of arrays
 	subMat=alloc_matrix(chunk, cols);
 	subMatCP=alloc_matrix(chunk, cols);
+	
+	
+	//DEBUG
 	while(1){
-		//send and receive max error to check if we need next iteration
-		if(rank!=0){
-			MPI_Send(maxerr, 1, MPI_DOUBLE, root, 0, MPI_COMM_WORLD);
-		}
-		else{
-			MPI_Recv(recverr, 1, MPI_DOUBLE, rank, 0, MPI_COMM_WORLD, &status);
-			global_err=max(global_err,recverr);
-		}
-		MPI_Barrier(MPI_COMM_WORLD);
-		if(rank==0){MPI_Bcast(global_err, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);}	
+		//working
+		MPI_Reduce(&maxerr,&global_err,1,MPI_DOUBLE,MPI_MAX,root,MPI_COMM_WORLD);
+		MPI_Bcast(&global_err, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 		if(global_err<EPS){
 			break;
 		}
-		//otherwise proceed 
 		
-		//rank 0 sends the orig matrix to all procs
+		//rank 0 sends the orig matrix to all procs. Actually this part might not be required
 		if(rank==0){
-			//make sure fix temp is the same at a given point 
-			a_old[I_FIX][J_FIX] = TEMP;
-			//and also padded elements are zeroed out
-			int i,j;	
-			for(i=rows;i<chunk*numProc;i++){
-				for(j=0;j<cols;j++){
-					a_old[i][j]=0.0;
-				}
-			}
-			//send orig matrix
+			int i;
 			for(i=1;i<numProc;i++){
-				MPI_Send(a_old[rank*chunk], cols*chunk, MPI_DOUBLE, i, 2, MPI_COMM_WORLD);
+				MPI_Send(a_old[i*chunk], cols*chunk, MPI_DOUBLE, i, 0, MPI_COMM_WORLD);
 			}
 		}
 		else{
-			MPI_Recv(a_old[rank*chunk], cols*chunk, MPI_DOUBLE, 0, 2, MPI_COMM_WORLD, &status);
+			MPI_Recv(a_old[rank*chunk], cols*chunk, MPI_DOUBLE, 0,0 , MPI_COMM_WORLD, &status);
 		}
-		
-		
 		MPI_Barrier(MPI_COMM_WORLD);
-		//first task is to send and receive ghost rows
+		// this communication is not required
 		
+		//DEBUG1////////////////////////////////////////////////////////////////////
 		if(rank==0){
-			//calculate what to send
-			MPI_Send(ghostrow_send_lower, cols, MPI_DOUBLE, rank+1, 1, MPI_COMM_WORLD);
-			MPI_Recv(ghostrow_recv_lower, cols, MPI_DOUBLE, rank+1, 1, MPI_COMM_WORLD, &status);
+			int i=0;
+			for(i=0;i<cols;i++){ghostrow_send_lower[i]=a_old[endRow][i];}
+			
+			MPI_Send(ghostrow_send_lower, cols, MPI_DOUBLE, rank+1, 0, MPI_COMM_WORLD);
+			MPI_Recv(ghostrow_recv_lower, cols, MPI_DOUBLE, rank+1, 0, MPI_COMM_WORLD, &status);
 		}
 		else if(rank==numProc-1){
-			//calculate what to send
+			int i=0;
+			for(i=0;i<cols;i++){ghostrow_send_upper[i]=a_old[startRow][i];}
+			
 			MPI_Send(ghostrow_send_upper, cols, MPI_DOUBLE, rank-1, 0, MPI_COMM_WORLD);
 			MPI_Recv(ghostrow_recv_upper, cols, MPI_DOUBLE, rank-1, 0, MPI_COMM_WORLD, &status);
 		}
 		else{
-			//calculate what to send
-			//calculate what to send
-			MPI_Send(ghostrow_send_lower, cols, MPI_DOUBLE, rank+1, 1, MPI_COMM_WORLD);
-			MPI_Recv(ghostrow_recv_lower, cols, MPI_DOUBLE, rank+1, 1, MPI_COMM_WORLD, &status);
+			int i=0;
+			for(i=0;i<cols;i++){ghostrow_send_upper[i]=a_old[startRow][i];}
+			for(i=0;i<cols;i++){ghostrow_send_lower[i]=a_old[endRow][i];}
+
+			MPI_Send(ghostrow_send_lower, cols, MPI_DOUBLE, rank+1, 0, MPI_COMM_WORLD);
+			MPI_Recv(ghostrow_recv_lower, cols, MPI_DOUBLE, rank+1, 0, MPI_COMM_WORLD, &status);
 			MPI_Send(ghostrow_send_upper, cols, MPI_DOUBLE, rank-1, 0, MPI_COMM_WORLD);
 			MPI_Recv(ghostrow_recv_upper, cols, MPI_DOUBLE, rank-1, 0, MPI_COMM_WORLD, &status);
-		}
-		//when finished start computation
+		}		
+		//working till here
 		
-		computeJacobi2(a_old, subMatCP,rows,cols,ghostrow_recv_upper,ghostrow_recv_lower,rank,chunk);
-		
+		//now do the computation
+		computeJacobi(a_old, subMat, chunk*nproc,cols,ghostrow_recv_upper,ghostrow_recv_lower,rank,chunk);
 		//compute the max diff here for every thread
-		maxerr=findMaxDiff(a_old,subMatCP,cols,rank,chunk);
+		maxerr=findMaxDiff(a_old,subMat,cols,rank,chunk);
 		
-		//copy back the subMatCP to a_old corresponding elements 
+		//copy back the subMatCP to a_old corresponding elements 		
+		copyPartToMatrix(a_old,subMat,cols,rank,chunk);
 		
-		copyPartToMatrix(a_old,subMatCP,cols,rank,chunk);
+		//readjust fixed element
+		a_old[I_FIX][J_FIX] = TEMP;
 		
-		//reconstruct a_old from all procs at proc 0
-		if(rank==0){
-			//receive from all
-			for(i=1;i<numProc;i++){
-				MPI_Recv(a_old[rank*chunk], cols*chunk, MPI_DOUBLE, i, 3, MPI_COMM_WORLD, &status);
+		//also can make padded rows all zero
+		int i,j;
+		for(i=rows;i<chunk*numProc;i++){
+			for(j=0;j<cols;j++){
+				a_old[i][j]=0.0;
 			}
-			a_old[I_FIX][J_FIX] = TEMP;
+		}
+		
+		//now we can copy corresponding parts to proc 0's original matrix
+		
+		if(rank==0){
+			int i;
+			for(i=1;i<numProc;i++){
+				MPI_Recv(a_old[i*chunk], cols*chunk, MPI_DOUBLE, i,0 , MPI_COMM_WORLD, &status);
+			}
 		}
 		else{
-			//send to 0
-			MPI_Send(a_old[rank*chunk], cols*chunk, MPI_DOUBLE, 0, 3, MPI_COMM_WORLD);
+			MPI_Send(a_old[rank*chunk], cols*chunk, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
-		//display
+		
 		print_matrix(a_old,rows,cols);
 		
+		//DEBUG1/////////////////////////////////////////////////////////////////////
+				
+		//break;//only for testing remove otherwise
 	}
 	if(rank==0){
 		//final display
 		printf("\nFinal Matrix: \n");
 		print_matrix(a_old,rows,cols);
-	}
-    
-   MPI_Finalize();
-
+	}	
+	MPI_Finalize();
     return 0;
+	
+	//DEBUG	
+	//=============================================================
+	/*(all procs send to proc 0)
+	///send and receive in loop in case the above method to send multiple rows fails
+	* 
+	if(rank==0){
+		int i,j;
+		for(i=1;i<numProc;i++){
+			startRow=i*chunk;
+			for(j=0;j<chunk;j++){
+				MPI_Recv(a_old[i*chunk+j], cols, MPI_DOUBLE, i,0 , MPI_COMM_WORLD, &status);
+			}
+		}
+	}
+	else{
+		int i;
+		int startRow=rank*chunk;
+		for(j=0;j<chunk;j++){
+			MPI_Send(a_old[rank*chunk+j], cols, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+		}
+	}
+	*/
+	//====================================================================
 }
 
 
