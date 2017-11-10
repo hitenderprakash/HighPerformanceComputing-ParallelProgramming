@@ -243,6 +243,7 @@ int main(int argc, char *argv[]) {
 		}
 		
 		//rank 0 sends the orig matrix to all procs. Actually this part might not be required
+		/*
 		if(rank==0){
 			int i;
 			for(i=1;i<numProc;i++){
@@ -253,24 +254,29 @@ int main(int argc, char *argv[]) {
 			MPI_Recv(a_old[rank*chunk], cols*chunk, MPI_DOUBLE, 0,0 , MPI_COMM_WORLD, &status);
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
+		*/
 		// this communication is not required
 		
 		//DEBUG1////////////////////////////////////////////////////////////////////
 		if(rank==0){
 			int i=0;
 			for(i=0;i<cols;i++){ghostrow_send_lower[i]=a_old[endRow][i];}
-			
-			MPI_Send(ghostrow_send_lower, cols, MPI_DOUBLE, rank+1, 0, MPI_COMM_WORLD);
-			MPI_Recv(ghostrow_recv_lower, cols, MPI_DOUBLE, rank+1, 0, MPI_COMM_WORLD, &status);
+			// will have to take care here that if there is only one processor available there will be no next proc
+			if(numProc>1){
+				MPI_Send(ghostrow_send_lower, cols, MPI_DOUBLE, rank+1, 0, MPI_COMM_WORLD);
+				MPI_Recv(ghostrow_recv_lower, cols, MPI_DOUBLE, rank+1, 0, MPI_COMM_WORLD, &status);
+			}
 		}
-		else if(rank==numProc-1){
+		if(rank==numProc-1){
 			int i=0;
 			for(i=0;i<cols;i++){ghostrow_send_upper[i]=a_old[startRow][i];}
-			
-			MPI_Send(ghostrow_send_upper, cols, MPI_DOUBLE, rank-1, 0, MPI_COMM_WORLD);
-			MPI_Recv(ghostrow_recv_upper, cols, MPI_DOUBLE, rank-1, 0, MPI_COMM_WORLD, &status);
+			// will have to take care here that if there is only one processor available there will be no previous proc
+			if(numProc>1){
+				MPI_Send(ghostrow_send_upper, cols, MPI_DOUBLE, rank-1, 0, MPI_COMM_WORLD);
+				MPI_Recv(ghostrow_recv_upper, cols, MPI_DOUBLE, rank-1, 0, MPI_COMM_WORLD, &status);
+			}
 		}
-		else{
+		if(rank!=0 && rank!=numProc-1){
 			int i=0;
 			for(i=0;i<cols;i++){ghostrow_send_upper[i]=a_old[startRow][i];}
 			for(i=0;i<cols;i++){ghostrow_send_lower[i]=a_old[endRow][i];}
@@ -302,7 +308,8 @@ int main(int argc, char *argv[]) {
 		}
 		
 		//now we can copy corresponding parts to proc 0's original matrix
-		
+		//-------------------------------------------------------------------------------------
+		/*
 		if(rank==0){
 			int i;
 			for(i=1;i<numProc;i++){
@@ -313,6 +320,26 @@ int main(int argc, char *argv[]) {
 			MPI_Send(a_old[rank*chunk], cols*chunk, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
+		*/
+		//second method 
+		if(rank==0){
+			int i,j;
+			for(i=1;i<numProc;i++){
+				startRow=i*chunk;
+				for(j=0;j<chunk;j++){
+					MPI_Recv(a_old[i*chunk+j], cols, MPI_DOUBLE, i,0 , MPI_COMM_WORLD, &status);
+				}
+			}
+		}
+		else{
+			int i;
+			int startRow=rank*chunk;
+			for(j=0;j<chunk;j++){
+				MPI_Send(a_old[rank*chunk+j], cols, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+			}
+		}
+
+		//-----------------------------------------------------------------------------------------
 		if(rank==0){
 			printf("\n\n");
 			print_matrix(a_old,rows,cols);
@@ -357,5 +384,4 @@ int main(int argc, char *argv[]) {
 	*/
 	//====================================================================
 }
-
 
