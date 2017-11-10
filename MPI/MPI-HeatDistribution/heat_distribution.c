@@ -4,12 +4,12 @@
 #include <float.h>
 #include "mpi.h"
 
-#define COLS 6
-#define ROWS 6
+#define COLS 12
+#define ROWS 12
 #define TEMP 50.0
 #define DEBUG 1
 #define EPS 1e-6
-#define I_FIX 5
+#define I_FIX 7
 #define J_FIX 5
 
 #define min(a,b) (((a)<(b))?(a):(b))
@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) {
 	double **subMat;
 	double **subMatCP;
 	
-	double maxerr=DBL_MIN;
+	double maxerr=DBL_MAX;
 	double global_err=DBL_MAX;
 	
 	double *ghostrow_send_upper=(double*) calloc(cols,sizeof(double));
@@ -283,7 +283,7 @@ int main(int argc, char *argv[]) {
 		//working till here
 		
 		//now do the computation
-		computeJacobi(a_old, subMat, chunk*nproc,cols,ghostrow_recv_upper,ghostrow_recv_lower,rank,chunk);
+		computeJacobi(a_old, subMat, chunk*numProc,cols,ghostrow_recv_upper,ghostrow_recv_lower,rank,chunk);
 		//compute the max diff here for every thread
 		maxerr=findMaxDiff(a_old,subMat,cols,rank,chunk);
 		
@@ -313,18 +313,23 @@ int main(int argc, char *argv[]) {
 			MPI_Send(a_old[rank*chunk], cols*chunk, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
+		if(rank==0){
+			printf("\n\n");
+			print_matrix(a_old,rows,cols);
+		}
 		
-		print_matrix(a_old,rows,cols);
+		MPI_Barrier(MPI_COMM_WORLD);
 		
 		//DEBUG1/////////////////////////////////////////////////////////////////////
 				
 		//break;//only for testing remove otherwise
 	}
+	/*
 	if(rank==0){
 		//final display
 		printf("\nFinal Matrix: \n");
 		print_matrix(a_old,rows,cols);
-	}	
+	}	*/
 	MPI_Finalize();
     return 0;
 	
