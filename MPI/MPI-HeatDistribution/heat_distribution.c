@@ -6,20 +6,11 @@
 
 #define COLS 20
 #define ROWS 20
-
-//Temperature at source cell
-#define TEMP 10.0 
-
-//debug flag, shows intermediate transitions
-#define DEBUG 1
-//minimum change in temp. between trasitions for quitting
-#define EPS 1e-6
-
-//Temperature source coordinates
-#define I_FIX 7
+#define TEMP 10.0 //Temperature at source cell
+#define DEBUG 1   //debug flag, shows intermediate transitions
+#define EPS 1e-6  //minimum change in temp. between trasitions for quitting
+#define I_FIX 7   //Temperature source coordinates
 #define J_FIX 7
-
-//custom min and max macros
 #define min(a,b) (((a)<(b))?(a):(b))
 #define max(a,b) (((a)>(b))?(a):(b))
 
@@ -90,6 +81,7 @@ double findMaxDiff(double **oldMat, double **newMat, int cols, int rank, int chu
 	return max_diff;
 }
 
+// Main program
 int main(int argc, char *argv[]) {
 	
 	MPI_Status status;
@@ -112,7 +104,6 @@ int main(int argc, char *argv[]) {
 	int rank,numProc, root = 0;
 	MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 	MPI_Comm_size(MPI_COMM_WORLD,&numProc);
-	
 	//printf("\nRank: %d, Number of Processes: %d.",rank,numProc);
     
     int chunk=0; //rows to be taken up by single process
@@ -133,12 +124,17 @@ int main(int argc, char *argv[]) {
 
 	MPI_Barrier(MPI_COMM_WORLD);
 	//printf("\nMy Rank: %d, Fixed Proc: %d  Fixed Row: %d",rank,proc_at_Fixed_Temp,Fixed_row);
+	
 	//now need to alloc and init the matrix with perfect size (padding may be required)
-	a_old=alloc_matrix(chunk*numProc, cols);
-	a_old[I_FIX][J_FIX] = TEMP;
 	//initially all processes have the same view of the heat sheet the actual averaging starts withing the loop 
+	a_old=alloc_matrix(chunk*numProc, cols);
+	//set the temperature at source
+	a_old[I_FIX][J_FIX] = TEMP;
+	
 	
 	//initialize sub matrix with less number of arrays
+	//in this matrix each process will keep newly computed temperature values
+	//This matrix is small in size and will keep data for one process only
 	subMat=alloc_matrix(chunk, cols);
 	
 	while(1){
@@ -147,6 +143,7 @@ int main(int argc, char *argv[]) {
 			int i=0;
 			for(i=0;i<cols;i++){ghostrow_send_lower[i]=a_old[endRow][i];}
 			// will have to take care here that if there is only one processor available there will be no next proc
+			//otherwise send and receive will fail
 			if(numProc>1){
 				MPI_Send(ghostrow_send_lower, cols, MPI_DOUBLE, rank+1, 0, MPI_COMM_WORLD);
 				MPI_Recv(ghostrow_recv_lower, cols, MPI_DOUBLE, rank+1, 0, MPI_COMM_WORLD, &status);
@@ -156,6 +153,7 @@ int main(int argc, char *argv[]) {
 			int i=0;
 			for(i=0;i<cols;i++){ghostrow_send_upper[i]=a_old[startRow][i];}
 			// will have to take care here that if there is only one processor available there will be no previous proc
+			//otherwise send and receive will fail
 			if(numProc>1){
 				MPI_Send(ghostrow_send_upper, cols, MPI_DOUBLE, rank-1, 0, MPI_COMM_WORLD);
 				MPI_Recv(ghostrow_recv_upper, cols, MPI_DOUBLE, rank-1, 0, MPI_COMM_WORLD, &status);
@@ -172,7 +170,7 @@ int main(int argc, char *argv[]) {
 			MPI_Recv(ghostrow_recv_upper, cols, MPI_DOUBLE, rank-1, 0, MPI_COMM_WORLD, &status);
 		}		
 
-		//now do the computation
+		//Computer new temperature values from the surrounding cells
 		computeJacobi(a_old, subMat, chunk*numProc,cols,ghostrow_recv_upper,ghostrow_recv_lower,rank,chunk);
 		
 		//adjust the fixed point in new small matrix
@@ -195,25 +193,15 @@ int main(int argc, char *argv[]) {
 			for(j=0;j<cols;j++){
 				a_old[i][j]=0.0;
 			}
-		}
-		
-		//now we can copy corresponding parts to proc 0's original matrix
-		//-------------------------------------------------------------------------------------
-		/*/=First method : Send and receive part of matrix in group of multiple rows===============
+		}		
+		/*
 		if(rank==0){
 			int i;
-			for(i=1;i<numProc;i++){
-				MPI_Recv(a_old[i*chunk], cols*chunk, MPI_DOUBLE, i,0 , MPI_COMM_WORLD, &status);
-			}
+			for(i=1;i<numProc;i++){MPI_Recv(a_old[i*chunk], cols*chunk, MPI_DOUBLE, i,0 , MPI_COMM_WORLD, &status);}
 		}
-		else{
-			MPI_Send(a_old[rank*chunk], cols*chunk, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
-		}
-		MPI_Barrier(MPI_COMM_WORLD);
+		else{MPI_Send(a_old[rank*chunk], cols*chunk, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);}
 		*/
-		//=First method : Send and receive part of matrix in group of multiple rows===============
-		
-		//second method : Send and receive part of matrix splited in rows========================
+		//AT proc 0 reconstruct the entire matrix by taking new values from each process
 		if(rank==0){
 			int i,j;
 			for(i=1;i<numProc;i++){
@@ -231,15 +219,15 @@ int main(int argc, char *argv[]) {
 			}
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
-		//second method : Send and receive part of matrix splited in rows========================
-		//-----------------------------------------------------------------------------------------
+		
+		//print if debugging is enabled
 		if(DEBUG){
 			if(rank==0){
 				printf("\n\n");
 				print_matrix(a_old,rows,cols);
 			}
 
-		}
+		}		
 		MPI_Barrier(MPI_COMM_WORLD);
 		
 		//find the max error among all processes
@@ -274,6 +262,4 @@ int main(int argc, char *argv[]) {
 	//FREE MEMORY
 	MPI_Finalize();
     return 0;
-
 }
-
