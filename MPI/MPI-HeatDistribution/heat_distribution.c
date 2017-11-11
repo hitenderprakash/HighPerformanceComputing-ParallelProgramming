@@ -7,7 +7,7 @@
 #define COLS 16
 #define ROWS 16
 #define TEMP 100.0
-#define DEBUG 0
+#define DEBUG 1
 #define EPS 1e-6
 #define I_FIX 7
 #define J_FIX 7
@@ -28,9 +28,10 @@ double max_abs(double** m1, double** m2, int rows, int cols){
 
 void print_matrix(double** matrix,int rows, int cols){
     for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++)
-            printf("%f ", matrix[i][j]);
-        printf("\n");
+		printf("\n");
+        for (int j = 0; j < cols; j++){
+            printf("%.2f	", matrix[i][j]);
+        }
     }
 }
 
@@ -224,13 +225,7 @@ int main(int argc, char *argv[]) {
 	//printf("\nRank %d gets from %d to %d", rank, startRow, endRow);
 	int proc_at_Fixed_Temp=(I_FIX/chunk);
 	int Fixed_row=I_FIX%chunk;
-	/*if(rank==proc_at_Fixed_Temp){
-		int i;
-		for(i=startRow;i<=endRow;i++){
-			if(i==I_FIX){Fixed_row=i-startRow;}
-		}
-	}*/
-	
+
 	MPI_Barrier(MPI_COMM_WORLD);
 	//printf("\nMy Rank: %d, Fixed Proc: %d  Fixed Row: %d",rank,proc_at_Fixed_Temp,Fixed_row);
 	//now need to alloc and init the matrix with perfect size (padding may be required)
@@ -380,8 +375,9 @@ int main(int argc, char *argv[]) {
 	}
 	if(rank==0){
 		//final display
-		printf("\nFinal Matrix: \n");
+		printf("\n\nFinal Matrix:\n");
 		print_matrix(a_old,rows,cols);
+		printf("\n\n");
 	}
 	
 	MPI_Finalize();
