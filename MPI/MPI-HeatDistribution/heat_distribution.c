@@ -1,16 +1,23 @@
+/*
+ * Hitender Prakash 
+ * Program: Jacobi iterative method (Heat transfer simulation)
+ * Parallel implementation using MPI
+ * 
+ */
+ 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <float.h>
 #include "mpi.h"
 
-#define COLS 20
-#define ROWS 20
+#define COLS 21
+#define ROWS 21
 #define TEMP 10.0 //Temperature at source cell
 #define DEBUG 1   //debug flag, shows intermediate transitions
 #define EPS 1e-6  //minimum change in temp. between trasitions for quitting
-#define I_FIX 7   //Temperature source coordinates
-#define J_FIX 7
+#define I_FIX 9   //Temperature source coordinates
+#define J_FIX 9
 #define min(a,b) (((a)<(b))?(a):(b))
 #define max(a,b) (((a)>(b))?(a):(b))
 
@@ -115,7 +122,7 @@ int main(int argc, char *argv[]) {
 	}
 	//printf("\nEach proc gets: %d rows",chunk);
 	int startRow=rank*chunk;
-	int endRow=min(rank*chunk+chunk-1,cols-1);
+	int endRow=min(rank*chunk+chunk-1,rows-1);
 	//printf("\nRank %d gets from %d to %d", rank, startRow, endRow);
 	
 	//for mapping the temp. source to proc when rows gets divided between different procs
@@ -172,6 +179,19 @@ int main(int argc, char *argv[]) {
 
 		//Computer new temperature values from the surrounding cells
 		computeJacobi(a_old, subMat, chunk*numProc,cols,ghostrow_recv_upper,ghostrow_recv_lower,rank,chunk);
+			
+		//zero out the extra padded rows in original large matrix.
+		//also need to do it in coreesponding small matrix taken for computing new values so that ...
+		//..does not impact the computation of maxerr
+		int i,j;				
+		if(endRow>rows-1){
+			for(i=endRow;i>=startRow && i>rows-1;i--){
+				for(j=0;j<cols;j++){
+					subMat[endRow-startRow][j]=0.0; 
+					a_old[i][j]=0.0; 
+				}
+			}
+		}
 		
 		//adjust the fixed point in new small matrix
 		if(rank==proc_at_Fixed_Temp){
@@ -186,14 +206,8 @@ int main(int argc, char *argv[]) {
 		
 		//copy back the subMatCP to a_old corresponding elements 		
 		copyPartToMatrix(a_old,subMat,cols,rank,chunk);
-			
-		//also can make padded rows all zero		
-		int i,j;
-		for(i=rows;i<chunk*numProc;i++){
-			for(j=0;j<cols;j++){
-				a_old[i][j]=0.0;
-			}
-		}		
+		
+		//AT proc 0 reconstruct the entire matrix by taking new values from each process
 		/*
 		if(rank==0){
 			int i;
@@ -201,7 +215,7 @@ int main(int argc, char *argv[]) {
 		}
 		else{MPI_Send(a_old[rank*chunk], cols*chunk, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);}
 		*/
-		//AT proc 0 reconstruct the entire matrix by taking new values from each process
+		
 		if(rank==0){
 			int i,j;
 			for(i=1;i<numProc;i++){
@@ -246,7 +260,8 @@ int main(int argc, char *argv[]) {
 	if(rank==0){
 		//final display
 		printf("\n\nFinal Matrix:\n");
-		print_matrix(a_old,rows,cols);
+		//print_matrix(a_old,numProc*chunk,cols); //print padded rows also 
+		print_matrix(a_old,rows,cols);  //do not print padded rows
 		printf("\n\n");
 	}
 	//FREE MEMORY
