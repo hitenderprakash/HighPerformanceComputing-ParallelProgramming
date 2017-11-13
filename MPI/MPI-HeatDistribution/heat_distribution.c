@@ -219,7 +219,6 @@ int main(int argc, char *argv[]) {
 		if(rank==0){
 			int i,j;
 			for(i=1;i<numProc;i++){
-				startRow=i*chunk;
 				for(j=0;j<chunk;j++){
 					MPI_Recv(a_old[i*chunk+j], cols, MPI_DOUBLE, i,0 , MPI_COMM_WORLD, &status);
 				}
@@ -227,7 +226,6 @@ int main(int argc, char *argv[]) {
 		}
 		else{
 			int i;
-			int startRow=rank*chunk;
 			for(j=0;j<chunk;j++){
 				MPI_Send(a_old[rank*chunk+j], cols, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
 			}
