@@ -191,14 +191,16 @@ int main(int argc, char *argv[]) {
 		//also need to do it in coreesponding small matrix taken for computing new values so that ...
 		//..does not impact the computation of maxerr
 		int i,j;				
-		if(paddedEndRow> endRow){
-			for(i=paddedEndRow;i>=startRow && i>endRow;i--){ //also need to make sure that we anly loop till startRow, after that rows belong to another procs
+		if(paddedEndRow > rows-1){      //will be true for processes which have padded rows 
+			for(i=paddedEndRow;i>=startRow && i > rows-1;i--){ //also need to make sure that we anly loop till startRow, after that rows belong to another procs
 				for(j=0;j<cols;j++){
 					subMat[i-startRow][j]=0.0; 
 					a_old[i][j]=0.0; 
 				}
 			}
 		}
+		//in case number of processors are far more than rows like 4x4 matrix is assigned to 64 processors than many processors will have all its chunks as padded rows
+		//above loop will also handle that case
 		
 		//adjust the fixed point in new small matrix
 		if(rank==proc_at_Fixed_Temp){
