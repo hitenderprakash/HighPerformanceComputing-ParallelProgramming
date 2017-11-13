@@ -41,7 +41,7 @@ double** alloc_matrix(int rows, int cols){
 
 //Method for computing the temperature of a cell from its surrounding cells
 void computeJacobi(double **oldmat, double **newmat, int rows, int cols, double *ghostrow_recv_upper, double *ghostrow_recv_lower,int rank,int chunk){
-	int startRow=chunk*rank;	
+	int firstRow=chunk*rank;	
 	int i,j;
 	for(i=0;i<chunk;i++){
 		for(j=0;j<cols;j++){
@@ -50,14 +50,14 @@ void computeJacobi(double **oldmat, double **newmat, int rows, int cols, double 
 			double right=0.0;
 			double left=0.0;
 			
-			if(j!=0){left=oldmat[i+startRow][j-1];}
-			if(j!=cols-1){right=oldmat[i+startRow][j+1];}
+			if(j!=0){left=oldmat[i+firstRow][j-1];}
+			if(j!=cols-1){right=oldmat[i+firstRow][j+1];}
 			
-			if(i+startRow!=startRow){upper=oldmat[i+startRow-1][j];}			
-			else if(i+startRow==startRow){upper=ghostrow_recv_upper[j];} 
+			if(i+firstRow!=firstRow){upper=oldmat[i+firstRow-1][j];}			
+			else if(i+firstRow==firstRow){upper=ghostrow_recv_upper[j];} 
 			
-			if(i+startRow!=startRow+chunk-1){lower=oldmat[i+startRow+1][j];}
-			else if(i+startRow==startRow+chunk-1){lower=ghostrow_recv_lower[j];}		
+			if(i+firstRow!=firstRow+chunk-1){lower=oldmat[i+firstRow+1][j];}
+			else if(i+firstRow==firstRow+chunk-1){lower=ghostrow_recv_lower[j];}		
 			newmat[i][j]= (0.25*(upper+lower+right+left));
 		}
 	}
@@ -66,23 +66,23 @@ void computeJacobi(double **oldmat, double **newmat, int rows, int cols, double 
 
 //copying a smaller source matrix to a bigger destination matrix as its part
 void copyPartToMatrix(double **dest, double **source, int size,int rank,int chunk){
-	int startRow=rank*chunk;
+	int firstRow=rank*chunk;
 	int i,j;
 	for(i=0;i<chunk;i++){
 		for(j=0;j<size;j++){
-			dest[i+startRow][j]=source[i][j];
+			dest[i+firstRow][j]=source[i][j];
 		}
 	}
 }
 
 //find the max temp. difference between any two cells after one transition
 double findMaxDiff(double **oldMat, double **newMat, int cols, int rank, int chunk){
-	int startRow=rank*chunk;
+	int firstRow=rank*chunk;
 	double max_diff=DBL_MIN;
 	int i,j;
 	for(i=0;i<chunk;i++){
 		for(j=0;j<cols;j++){
-			max_diff= max(max_diff,fabs(newMat[i][j]-oldMat[i+startRow][j]));
+			max_diff= max(max_diff,fabs(newMat[i][j]-oldMat[i+firstRow][j]));
 		}
 	}
 	return max_diff;
