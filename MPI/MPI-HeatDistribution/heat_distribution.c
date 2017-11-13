@@ -122,7 +122,14 @@ int main(int argc, char *argv[]) {
 	}
 	//printf("\nEach proc gets: %d rows",chunk);
 	int startRow=rank*chunk;
-	int endRow=min(rank*chunk+chunk-1,rows-1);
+	
+	int paddedEndRow=rank*chunk+chunk-1;
+	int endRow=min(paddedEndRow,rows-1); 
+	//end row will not contain any padded row for example 21 rows matrix was given to 4 procs
+	//each proc will have 6 rows i.e 21 row's matrix will be padded with 3 more rows i.e augmented matrix has 24 rows
+	//but for each proc endRow will have valid row from the actual matrix i.e 4th proc will have end row - 21 though it can also access padded rows as well
+	//normally every process except last one will have same value for paddedEndRow and endRow or if no padding was required then last proc will also have same value for both
+	
 	//printf("\nRank %d gets from %d to %d", rank, startRow, endRow);
 	
 	//for mapping the temp. source to proc when rows gets divided between different procs
@@ -184,10 +191,10 @@ int main(int argc, char *argv[]) {
 		//also need to do it in coreesponding small matrix taken for computing new values so that ...
 		//..does not impact the computation of maxerr
 		int i,j;				
-		if(endRow>rows-1){
-			for(i=endRow;i>=startRow && i>rows-1;i--){
+		if(paddedEndRow> endRow){
+			for(i=paddedEndRow;i>=startRow && i>endRow;i--){ //also need to make sure that we anly loop till startRow, after that rows belong to another procs
 				for(j=0;j<cols;j++){
-					subMat[endRow-startRow][j]=0.0; 
+					subMat[i-startRow][j]=0.0; 
 					a_old[i][j]=0.0; 
 				}
 			}
