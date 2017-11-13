@@ -26,7 +26,7 @@ void print_matrix(double** matrix,int rows, int cols){
     for (int i = 0; i < rows; i++) {
 		printf("\n");
         for (int j = 0; j < cols; j++){
-            printf("%.3f	", matrix[i][j]);
+            printf("%.6f	", matrix[i][j]);
         }
     }
 }
@@ -186,12 +186,46 @@ int main(int argc, char *argv[]) {
 
 		//Computer new temperature values from the surrounding cells
 		computeJacobi(a_old, subMat, chunk*numProc,cols,ghostrow_recv_upper,ghostrow_recv_lower,rank,chunk);
+		
+		//======================only required if all side cells to be kept 0==================
+		//this loop will make all element of first and last coloumn zero in old large matrix 
+		//as well as in its mapping small matrix at particular proc (run for all proc)
+		
+		//it could have been achieved in ComputeJacobi method by altering inner loop from j=1 to j=cols-2 instead of j=0 to j=cols-1
+		//but wanted to keep that code general, so doing it separately here
+		int i,j;
+		for(i=0;i<chunk;i++){
+			subMat[i][0]=0.0;
+			subMat[i][cols-1]=0.0;
+			a_old[i+startRow][0]=0.0;
+			a_old[i+startRow][cols-1]=0.0;
+		}
+		//this loop will make all element of first row zero in old large matrix 
+		//as well as in its mapping small matrix at particular proc (always proc 0)
+		if(startRow==0){
+			for(i=0;i<cols;i++){
+				subMat[startRow][i]=0.0;
+				a_old[startRow][i]=0.0;
+			}
+		}
+		//this loop will make all element of last row zero in old large matrix 
+		//as well as in its mapping small matrix at particular proc (normally last proc)
+		//as well as make all padded rows elemnt zero 
+		if(paddedEndRow >= rows-1){
+			for(i=paddedEndRow;i>=startRow && i>=rows-1;i--){ //also need to make sure that we anly loop till startRow, after that rows belong to another procs
+				for(j=0;j<cols;j++){
+					subMat[i-startRow][j]=0.0; 
+					a_old[i][j]=0.0; 
+				}
+			}
+		}
+		//======================only required if all side cells to be kept 0==================
 			
 		//zero out the extra padded rows in original large matrix.
 		//also need to do it in coreesponding small matrix taken for computing new values so that ...
 		//..does not impact the computation of maxerr
-		int i,j;				
-		if(paddedEndRow > rows-1){      //will be true for processes which have padded rows 
+		/*int i,j;				
+		if(paddedEndRow > rows-1){
 			for(i=paddedEndRow;i>=startRow && i > rows-1;i--){ //also need to make sure that we anly loop till startRow, after that rows belong to another procs
 				for(j=0;j<cols;j++){
 					subMat[i-startRow][j]=0.0; 
@@ -199,9 +233,7 @@ int main(int argc, char *argv[]) {
 				}
 			}
 		}
-		//in case number of processors are far more than rows like 4x4 matrix is assigned to 64 processors than many processors will have all its chunks as padded rows
-		//above loop will also handle that case
-		
+		*/
 		//adjust the fixed point in new small matrix
 		if(rank==proc_at_Fixed_Temp){
 			subMat[Fixed_row][J_FIX]=TEMP;
