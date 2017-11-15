@@ -31,6 +31,20 @@ void print_matrix(double** matrix,int rows, int cols){
     }
 }
 
+//prints matrix to console and write to a file "results.txt" in current directory
+void print_and_write_matrix(double** matrix,int rows, int cols){
+	FILE *fout=fopen("results.txt","a");
+    for (int i = 0; i < rows; i++) {
+		printf("\n");
+		fprintf(fout,"\n");
+        for (int j = 0; j < cols; j++){
+            printf("%.6f	", matrix[i][j]);
+            fprintf(fout,"%.6f	", matrix[i][j]);
+        }
+    }
+    fclose(fout);
+}
+
 //init matrix with default value as zero
 double** alloc_matrix(int rows, int cols){
     double** matrix = (double**) malloc(rows * sizeof(double *));
@@ -300,7 +314,10 @@ int main(int argc, char *argv[]) {
 		//final display
 		printf("\n\nFinal Matrix:\n");
 		//print_matrix(a_old,numProc*chunk,cols); //print padded rows also 
-		print_matrix(a_old,rows,cols);  //do not print padded rows
+		//print_matrix(a_old,rows,cols);  //do not print padded rows
+		
+		//print matrix and also write it to file "results.txt"
+		print_and_write_matrix(a_old,rows,cols);
 		printf("\n\n");
 	}
 	//FREE MEMORY
