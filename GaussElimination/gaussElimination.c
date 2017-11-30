@@ -1,16 +1,52 @@
+/*
+ * Parallel (OpenMP) program for computing Matrix Inverse
+ * Algorithm: Guass Elimination (row reduction)
+ * Author: Hitender Prakash
+ */
+ 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include "omp.h"
 
+//function prototypes
+
+//write a string to a file
+void write_to_file(char *message,char *filename, char *file_mode);
+
+//write a matrix to the file
+void write_matrix_to_file(double** matrix,int rows, int cols, char *filename, char *file_mode);
+
+//display matrix to console
 void displayMatrix(double **matrix, int rows, int cols);
+
+//swap two rows in a matrix
 void swaprows(double **matrix,int row1, int row2,int cols);
+
+//=======================main programs starts===========================
 int main(int argc, char *argv[]){
 	int mrow=20000;
 	int mcol=20000;
-	if(argc!=3){printf("\nUsage: prog <rows> <cols>"); exit(0);}
+	if(argc!=3){
+		printf("\nUsage: prog <rows> <cols>\n"); 
+		exit(0);
+	}
+	//read rows and columns from the arguments 
 	mrow=atoi(argv[1]);
 	mcol=atoi(argv[2]);
+	
+	//check if rows and columns are not zero
+	if(!mrow || !mcol){
+		printf("\nError: Rows or Coloumns cannot be 0 ! Exiting...\n");
+		exit(0);
+	}
+	
+	//check if matrix is a square matrix
+	
+	if(mrow!=mcol){
+		printf("\nError: Matrix is not a square matrix! Exiting...\n");
+		exit(0);
+	}
 	
 	int i,j,k;
 	double **mat=0;//initialize pointer with null 
@@ -20,28 +56,31 @@ int main(int argc, char *argv[]){
 		mat[i]=(double *)malloc(mcol*sizeof(double));
 	}
 	//double count=7;
-	//initializing the matrix elements with zero 
+	//initializing the matrix elements with randomly generated values  
 	for(i=0;i<mrow;i++){
 		for(j=0;j<mcol;j++){
 			mat[i][j]=7+rand()%11;
 		}
 	}
 	
+	//matrix to store inverse
 	double **invmat=0;//initialize pointer with null 
 	invmat=(double **)malloc(mrow*sizeof(double *));
 	
 	for(i=0;i<mrow;i++){
 		invmat[i]=(double *)malloc(mcol*sizeof(double));
 	}
-	//initializing the matrix elements with zero 
+	//initializing the inverse matrix with identity matrix
 	for(i=0;i<mrow;i++){
 		for(j=0;j<mcol;j++){
 			if(i==j){invmat[i][j]=1;}
 			else{invmat[i][j]=0;}
 		}
 	}
-	//displayMatrix(mat,mrow,mcol);
-	//displayMatrix(invmat,mrow,mcol);
+	
+	//write original matrix data to file 
+	write_to_file("Original Input matrix is:\n","results.txt", "w+");
+	write_matrix_to_file(mat,mrow,mcol,"results.txt", "a");
 	
 	//transform if any diagonal element is zero
 	int singularFlag=0;
@@ -57,7 +96,11 @@ int main(int argc, char *argv[]){
 					break;
 				}
 			}
-			if(singularFlag==1){printf("\nSingular Matrix ! Exiting");exit(0);}
+			if(singularFlag==1){
+				write_to_file("\nError: This is a Singular Matrix ! Inverse does not exist!\n","results.txt", "a");
+				printf("\nError: This is a Singular Matrix ! Exiting...\n");
+				exit(0);
+			}
 		}
 	}
 	
@@ -66,7 +109,12 @@ int main(int argc, char *argv[]){
 
 	for(i=0;i<mrow;i++){
 		double div=mat[i][i];
-		if(div==0){printf("\nError: singular matrix");exit(0);}
+		if(div==0){
+			write_to_file("\nError: This is a Singular Matrix ! Inverse does not exist!\n","results.txt", "a");
+			printf("\nError: This is a Singular Matrix ! Exiting...\n");
+			exit(0);
+		}
+		
 		#pragma omp parallel for
 		for(j=0;j<mcol;j++){
 			mat[i][j]=mat[i][j]/div;
@@ -85,14 +133,23 @@ int main(int argc, char *argv[]){
 		}
 		#pragma omp barrier
 	}
-	//inverse calculation section ends
-	displayMatrix(mat,mrow,mcol);
-	displayMatrix(invmat,mrow,mcol);
+	
+	//write inverse matrix data to file
+	write_to_file("\nInverse of the matrix is:\n","results.txt", "a");
+	write_matrix_to_file(invmat,mrow,mcol,"results.txt", "a");
 
-	printf("\nDone\n");
 	return 0;
 }
+//main ends
 
+//============================= define functions =======================
+/* display matrix to console
+ * input:
+ * matrix: matrix to be written
+ * rows: number of rows in matrix
+ * cols: number of columns in matrix
+ * Output: void
+ */
 void displayMatrix(double **matrix, int rows, int cols){
 	if(!matrix){return;}
 	int i,j;
@@ -105,6 +162,13 @@ void displayMatrix(double **matrix, int rows, int cols){
 	}
 	printf("\n");
 }
+/* swap two rows in a matrix
+ * input:
+ * matrix: matrix to be written
+ * row1 and row2: rows to be swaped
+ * cols: number of columns
+ * Output: void
+ */
 void swaprows(double **matrix,int row1, int row2,int cols){
 	int i;
 	for(i=0;i<cols;i++){
@@ -113,3 +177,35 @@ void swaprows(double **matrix,int row1, int row2,int cols){
 		matrix[row2][i]=temp;
 	}
 }
+/* write a matrix data to file
+ * input:
+ * matrix: matrix to be written
+ * rows: number of rows in matrix
+ * cols: number of columns
+ * filename: file to write
+ * file_mode: mode to open the file like create or append
+ * Output: void
+ */
+void write_matrix_to_file(double** matrix,int rows, int cols,char *filename, char *file_mode){
+	FILE *fout=fopen(filename,file_mode);
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++){
+            fprintf(fout,"%lf\t", matrix[i][j]);
+        }
+        fprintf(fout,"\n");
+    }
+    fclose(fout);
+}
+/* write a string to a file
+ * input:
+ * message: string to write
+ * filename: file to write
+ * file_mode: mode to open the file like create or append
+ * Output: void
+ */
+void write_to_file(char *message,char *filename, char *file_mode){
+	FILE *fout=fopen(filename,file_mode);
+	fprintf(fout,"%s",message);
+	fclose(fout);
+}
+//============================= functions definition ends =======================
