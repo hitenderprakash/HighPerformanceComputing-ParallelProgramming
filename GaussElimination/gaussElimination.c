@@ -51,9 +51,16 @@ int main(int argc, char *argv[]){
 	int i,j,k;
 	double **mat=0;//initialize pointer with null 
 	mat=(double **)malloc(mrow*sizeof(double *));
-	
+	if(!mat){
+		printf("\nError: Memory allocation failure ! Exiting...\n");
+		exit(0);
+	}
 	for(i=0;i<mrow;i++){
 		mat[i]=(double *)malloc(mcol*sizeof(double));
+		if(!mat[i]){
+			printf("\nError: Memory allocation failure ! Exiting...\n");
+			exit(0);
+		}
 	}
 	//double count=7;
 	//initializing the matrix elements with randomly generated values  
@@ -66,9 +73,17 @@ int main(int argc, char *argv[]){
 	//matrix to store inverse
 	double **invmat=0;//initialize pointer with null 
 	invmat=(double **)malloc(mrow*sizeof(double *));
+	if(!invmat){
+		printf("\nError: Memory allocation failure ! Exiting...\n");
+		exit(0);
+	}
 	
 	for(i=0;i<mrow;i++){
 		invmat[i]=(double *)malloc(mcol*sizeof(double));
+		if(!invmat[i]){
+			printf("\nError: Memory allocation failure ! Exiting...\n");
+			exit(0);
+		}
 	}
 	//initializing the inverse matrix with identity matrix
 	for(i=0;i<mrow;i++){
@@ -137,6 +152,15 @@ int main(int argc, char *argv[]){
 	//write inverse matrix data to file
 	write_to_file("\nInverse of the matrix is:\n","results.txt", "a");
 	write_matrix_to_file(invmat,mrow,mcol,"results.txt", "a");
+	
+	//free memory
+	for(i=0;i<mrow;i++){
+		free(mat[i]);
+		free(invmat[i]);
+	}
+	free(mat);
+	free(invmat);
+	//===============
 
 	return 0;
 }
@@ -188,8 +212,9 @@ void swaprows(double **matrix,int row1, int row2,int cols){
  */
 void write_matrix_to_file(double** matrix,int rows, int cols,char *filename, char *file_mode){
 	FILE *fout=fopen(filename,file_mode);
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++){
+	int i,j;
+    for (i = 0; i < rows; i++) {
+        for (j = 0; j < cols; j++){
             fprintf(fout,"%lf\t", matrix[i][j]);
         }
         fprintf(fout,"\n");
