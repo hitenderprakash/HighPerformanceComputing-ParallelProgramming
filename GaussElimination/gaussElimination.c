@@ -76,13 +76,14 @@ static __inline__ unsigned long long rdtsc(void)
 
 //=======================main programs starts===========================
 int main(int argc, char *argv[]){
-	int mrow=20000;
-	int mcol=20000;
+	int mrow=0;
+	int mcol=0;//initialize with 0,though these values are taken from command line arguments
 	if(argc!=3){
 		printf("\nUsage: prog <rows> <cols>\n"); 
 		exit(0);
 	}
 	//read rows and columns from the arguments 
+	// c does not support try catch, if user enters garbage it may fail
 	mrow=atoi(argv[1]);
 	mcol=atoi(argv[2]);
 	
@@ -113,11 +114,13 @@ int main(int argc, char *argv[]){
 			exit(0);
 		}
 	}
-	//double count=7;
 	//initializing the matrix elements with randomly generated values  
 	for(i=0;i<mrow;i++){
 		for(j=0;j<mcol;j++){
-			mat[i][j]=7+rand()%11;
+			//can be initialized with any random number
+			//I am confining them below 97 (prime number, nothing sacrosanct about 97) so results can easily be verified
+			//keep value such that the multiplication of two nums does not overflow double datatype
+			mat[i][j]=(double)(rand()%97);
 		}
 	}
 	
