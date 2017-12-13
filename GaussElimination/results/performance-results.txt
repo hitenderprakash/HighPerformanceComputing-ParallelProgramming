@@ -1,0 +1,62 @@
+hprakash@aprun3:~/HPCProject> export OMP_NUM_THREADS=1
+hprakash@aprun3:~/HPCProject> time aprun -d 1 ./gaussElimination.out 10000 10000
+Matrix-inverse computation time: 15883.977588 seconds
+Matrix and inverse matrix written to file: result.txt
+Application 14942856 resources: utime ~15982s, stime ~2s, Rss ~1564776, inblocks ~31, outblocks ~3788544
+
+real    277m50.405s
+user    0m0.044s
+sys     0m0.108s
+hprakash@aprun3:~/HPCProject> export OMP_NUM_THREADS=2
+hprakash@aprun3:~/HPCProject> time aprun -d 2 ./gaussElimination.out 10000 10000
+Matrix-inverse computation time: 9197.722081 seconds
+Matrix and inverse matrix written to file: result.txt
+Application 14948980 resources: utime ~18476s, stime ~3s, Rss ~1564776, inblocks ~31, outblocks ~3788544
+
+real    163m27.755s
+user    0m0.024s
+sys     0m0.068s
+hprakash@aprun3:~/HPCProject> export OMP_NUM_THREADS=4
+hprakash@aprun3:~/HPCProject> time aprun -d 4 ./gaussElimination.out 10000 10000
+Matrix-inverse computation time: 4891.190640 seconds
+Matrix and inverse matrix written to file: result.txt
+Application 14951625 resources: utime ~19631s, stime ~4s, Rss ~1564776, inblocks ~31, outblocks ~3788544
+
+real    90m59.828s
+user    0m0.020s
+sys     0m0.048s
+hprakash@aprun3:~/HPCProject> export OMP_NUM_THREADS=8
+hprakash@aprun3:~/HPCProject> time aprun -d 8 ./gaussElimination.out 10000 10000
+Matrix-inverse computation time: 2582.107356 seconds
+Matrix and inverse matrix written to file: result.txt
+Application 14953138 resources: utime ~20686s, stime ~6s, Rss ~1564776, inblocks ~31, outblocks ~3788544
+
+real    52m58.810s
+user    0m0.016s
+sys     0m0.036s
+hprakash@aprun3:~/HPCProject> export OMP_NUM_THREADS=16
+hprakash@aprun3:~/HPCProject> time aprun -d 16 ./gaussElimination.out 10000 1000
+Matrix-inverse computation time: 2464.571645 seconds
+Matrix and inverse matrix written to file: result.txt
+Application 14954536 resources: utime ~31103s, stime ~8s, Rss ~1564776, inblocks ~31, outblocks ~3788544
+
+real    50m33.734s
+user    0m0.008s
+sys     0m0.048s
+hprakash@aprun3:~/HPCProject> export OMP_NUM_THREADS=32
+hprakash@aprun3:~/HPCProject> time aprun -d 32 ./gaussElimination.out 10000 1000
+Matrix-inverse computation time: 2726.722727 seconds
+Matrix and inverse matrix written to file: result.txt
+Application 14955974 resources: utime ~70814s, stime ~17s, Rss ~1564916, inblocks ~31, outblocks ~3788544
+
+real    57m33.749s
+user    0m0.008s
+sys     0m0.052s
+hprakash@aprun3:~/HPCProject> export OMP_NUM_THREADS=64
+hprakash@aprun3:~/HPCProject> time aprun -d 64 ./gaussElimination.out 10000 1000 
+apsched: -d value cannot exceed largest node size
+
+real    0m1.155s
+user    0m0.008s
+sys     0m0.008s
+hprakash@aprun3:~/HPCProject>
